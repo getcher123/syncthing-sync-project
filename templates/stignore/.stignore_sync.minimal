@@ -1,0 +1,11 @@
+// Общие игноры (этот файл синхронизируется, т.к. это НЕ `.stignore`).
+// Подключается из `.stignore` строкой: `#include .stignore_sync`
+
+// Локальные версии (если включена File Versioning).
+(?d).stversions
+
+// Мусор ОС.
+(?d).DS_Store
+(?d)Thumbs.db
+(?d)desktop.ini
+(?d)~$*

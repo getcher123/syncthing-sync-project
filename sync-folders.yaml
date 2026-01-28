@@ -1,0 +1,108 @@
+version: 2
+project:
+  name: syncthing-3node
+
+# Канонический список папок, которые должны быть синхронизированы между:
+# - двумя WSL нодами (в любых локальных сетях)
+# - одной нодой в Amvera (docker, с постоянным хранилищем)
+#
+# ВАЖНО: Syncthing не делает “last-write-wins без конфликтов” — при параллельных
+# изменениях одного и того же файла на разных нодах будут sync-conflict копии.
+
+nodes:
+  wsl_a:
+    type: wsl
+    mode: native_or_docker
+    distro: REQUIRED
+    device_id: REQUIRED
+  wsl_b:
+    type: wsl
+    mode: native_or_docker
+    distro: REQUIRED
+    device_id: REQUIRED
+  amvera:
+    type: amvera
+    mode: docker
+    device_id: REQUIRED
+    domain: REQUIRED
+    persistent_root: /data
+    sync_root: /data/sync
+    persistent_size_gb: 10
+
+defaults:
+  folder_type: sendreceive
+  ignore_perms: true
+
+folders:
+  # Папка диалогов Codex/Sessions (уточнить точный путь и что именно включать).
+  - id: codex-sessions
+    label: Codex dialogs (sessions)
+    type: sendreceive
+    ignore_perms: true
+    paths:
+      wsl_a: ~/.codex/sessions
+      wsl_b: ~/.codex/sessions
+      amvera: /data/sync/wsl/codex/sessions
+
+  - id: bi-core-xp
+    label: BI core XP
+    type: sendreceive
+    ignore_perms: true
+    paths:
+      wsl_a: /mnt/c/BI core XP
+      wsl_b: /mnt/c/BI core XP
+      amvera: /data/sync/C/BI core XP
+
+  - id: syncthing-sync-project
+    label: syncthing-sync-project
+    type: sendreceive
+    ignore_perms: true
+    paths:
+      wsl_a: /mnt/c/syncthing-sync-project
+      wsl_b: /mnt/c/syncthing-sync-project
+      amvera: /data/sync/C/syncthing-sync-project
+
+  - id: ud-mvp2
+    label: ud-mvp2
+    type: sendreceive
+    ignore_perms: true
+    paths:
+      wsl_a: /mnt/c/ud-mvp2
+      wsl_b: /mnt/c/ud-mvp2
+      amvera: /data/sync/C/ud-mvp2
+
+  - id: screen-vision
+    label: screen.vision
+    type: sendreceive
+    ignore_perms: true
+    paths:
+      wsl_a: /mnt/c/screen.vision
+      wsl_b: /mnt/c/screen.vision
+      amvera: /data/sync/C/screen.vision
+
+  - id: life
+    label: Life
+    type: sendreceive
+    ignore_perms: true
+    paths:
+      wsl_a: /mnt/c/Life
+      wsl_b: /mnt/c/Life
+      amvera: /data/sync/C/Life
+
+  - id: informika
+    label: informika
+    type: sendreceive
+    ignore_perms: true
+    paths:
+      wsl_a: /mnt/c/informika
+      wsl_b: /mnt/c/informika
+      amvera: /data/sync/C/informika
+
+  - id: aihub-reps
+    label: AIHUB-reps
+    type: sendreceive
+    ignore_perms: true
+    paths:
+      wsl_a: /mnt/c/AIHUB-reps
+      wsl_b: /mnt/c/AIHUB-reps
+      amvera: /data/sync/C/AIHUB-reps
