@@ -28,6 +28,39 @@ def load_yaml(path: Path) -> dict:
     return data
 
 
+def merge_local_config(base: dict, local: dict) -> dict:
+    merged = dict(base)
+    merged_nodes = dict((base.get("nodes") or {}))
+    local_nodes = local.get("nodes") or {}
+    if isinstance(local_nodes, dict):
+        for node_name, node_cfg in local_nodes.items():
+            if isinstance(node_cfg, dict):
+                merged_nodes[node_name] = {**(merged_nodes.get(node_name) or {}), **node_cfg}
+    merged["nodes"] = merged_nodes
+
+    local_folders = local.get("folders") or {}
+    if isinstance(local_folders, dict):
+        folders = merged.get("folders") or []
+        if isinstance(folders, list):
+            for item in folders:
+                if not isinstance(item, dict):
+                    continue
+                folder_id = item.get("id")
+                if not folder_id:
+                    continue
+                overrides = local_folders.get(str(folder_id))
+                if not isinstance(overrides, dict):
+                    continue
+                paths = item.get("paths")
+                if not isinstance(paths, dict):
+                    paths = {}
+                    item["paths"] = paths
+                for k, v in overrides.items():
+                    if k in ("wsl_a", "wsl_b", "amvera") and isinstance(v, str) and v:
+                        paths[k] = v
+    return merged
+
+
 def iter_folder_paths(config: dict, node: str):
     folders = config.get("folders")
     if not isinstance(folders, list):
@@ -97,6 +130,9 @@ def main() -> int:
 
     config_path = Path(args.config).resolve()
     config = load_yaml(config_path)
+    local_path = config_path.with_name("sync-folders.local.yaml")
+    if local_path.exists():
+        config = merge_local_config(config, load_yaml(local_path))
 
     stignore_template = (TEMPLATES_DIR / ".stignore").read_text(encoding="utf-8")
     stignore_sync_template = (
@@ -144,4 +180,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

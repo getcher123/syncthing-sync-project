@@ -10,7 +10,15 @@ ENV STNOUPGRADE=1 \
     # Путь до yaml-конфига (копируем в image).
     SYNC_CONFIG=/app/sync-folders.yaml \
     # Профиль игноров для `.stignore_sync` (minimal|dev)
-    STIGNORE_PROFILE=dev
+    STIGNORE_PROFILE=dev \
+    # Versioning: храним 3 копии ~30 дней (на Amvera)
+    ST_VERSIONING_TYPE=simple \
+    ST_VERSIONING_KEEP=3 \
+    ST_VERSIONING_CLEANOUT_DAYS=30 \
+    # Простой HTTP file browser для скачивания бэкап-версий (включён по умолчанию)
+    FILE_BROWSER_ENABLED=1 \
+    FILE_BROWSER_PORT=80 \
+    FILE_BROWSER_ROOT=/data/syncthing/versions
 
 RUN apk add --no-cache python3 py3-yaml
 
@@ -24,7 +32,7 @@ COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN chmod +x /usr/local/bin/start-syncthing.sh /usr/local/bin/docker-entrypoint.sh
 
-EXPOSE 8384 22000/tcp 22000/udp 21027/udp
+EXPOSE 80 8384 22000/tcp 22000/udp 21027/udp
 
 # В Amvera обычно монтируется один persistent root (/data), поэтому держим всё там.
 VOLUME ["/data"]

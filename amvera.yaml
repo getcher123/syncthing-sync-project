@@ -5,13 +5,7 @@ build:
   dockerfile: docker/Dockerfile
 
 run:
-  # В Amvera внешний TCP доступ ограничен портами контроллеров (см. docs.amvera.ru):
-  # - POSTGRES: 5432
-  # - MONGO: 27017
-  # - REDIS: 6379
-  #
-  # Для Syncthing можно использовать, например, MONGO (27017) и пробросить его на
-  # TCP порт Syncthing внутри контейнера (22000).
-  containerPort: 22000
-  servicePort: 27017
+  # Syncthing будет работать через relays (все ноды с интернетом), поэтому внешний TCP порт для него не обязателен.
+  # Здесь пробрасываем только HTTP file browser для скачивания версий файлов.
+  containerPort: 80
   persistenceMount: /data

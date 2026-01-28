@@ -1,0 +1,38 @@
+# Локальный файл (НЕ коммитить): реальные пути + device IDs.
+# Скопируй в `sync-folders.local.yaml` и заполни под свои машины.
+
+nodes:
+  wsl_a:
+    distro: Ubuntu-22.04
+    mode: native
+    device_id: REPLACE_WITH_WSL_A_DEVICE_ID
+  wsl_b:
+    distro: Ubuntu-22.04
+    mode: native
+    device_id: REPLACE_WITH_WSL_B_DEVICE_ID
+
+folders:
+  codex-sessions:
+    wsl_a: ~/.codex/sessions
+    wsl_b: ~/.codex/sessions
+  bi-core-xp:
+    wsl_a: /mnt/c/BI core XP
+    wsl_b: /mnt/c/BI core XP
+  syncthing-sync-project:
+    wsl_a: /mnt/c/syncthing-sync-project
+    wsl_b: /mnt/c/syncthing-sync-project
+  ud-mvp2:
+    wsl_a: /mnt/c/ud-mvp2
+    wsl_b: /mnt/c/ud-mvp2
+  screen-vision:
+    wsl_a: /mnt/c/screen.vision
+    wsl_b: /mnt/c/screen.vision
+  life:
+    wsl_a: /mnt/c/Life
+    wsl_b: /mnt/c/Life
+  informika:
+    wsl_a: /mnt/c/informika
+    wsl_b: /mnt/c/informika
+  aihub-reps:
+    wsl_a: /mnt/c/AIHUB-reps
+    wsl_b: /mnt/c/AIHUB-reps

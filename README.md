@@ -1,75 +1,117 @@
-# Syncthing: 3 ноды (2×WSL + Amvera)
+# Syncthing Sync Project (2×WSL + Amvera)
 
-Цель: синхронизация фиксированного набора папок между тремя нодами:
-- `wsl_a` (WSL, native или docker)
-- `wsl_b` (WSL, native или docker)
-- `amvera` (только docker + постоянное хранилище)
+## Описание
 
-## Файлы проекта
+Проект разворачивает Syncthing на трёх нодах:
+- 2 локальные машины с WSL (`wsl_a`, `wsl_b`) — равноправные, могут и принимать, и отдавать.
+- 1 нода в Amvera (`amvera`) — docker + persistent storage, работает через relays (без обязательных входящих TCP портов).
 
-- `sync-folders.yaml` — единый список папок для синхронизации и пути на каждой ноде.
-- `docker/Dockerfile` — образ Syncthing для Amvera (ориентирован на persistent storage в `/data`).
+## Цель и какую проблему решает
 
-## Важные ограничения (чтобы ожидания совпали с реальностью)
+Синхронизировать **фиксированный набор папок** между несколькими машинами и иметь “облачную” третью ноду:
+- чтобы данные сходились, даже если одна из локальных машин временно недоступна;
+- чтобы на Amvera сохранялись версии файлов (бэкап на случай удаления/перезаписи);
+- чтобы версии можно было скачать вручную через публичный HTTP file browser.
 
-- Syncthing не делает “автоматический last-write-wins без конфликтов”.
-  Если один и тот же файл изменён на разных нодах офлайн, при встрече будут `sync-conflict` копии.
-- Чтобы минимизировать риск потери данных, обычно включают versioning (например, только на Amvera как “бэкап-ноде”).
+## Стек
 
-## Что уже задано
+- Syncthing (P2P синхронизация, relays)
+- WSL (2 локальные ноды)
+- Docker (для Amvera; опционально для WSL)
+- Amvera (деплой контейнера + persistent storage)
+- Python скрипты (генерация/патч `config.xml`, установка `.stignore`)
 
-В `sync-folders.yaml` уже внесены папки:
-- `C:\\BI core XP`
-- `C:\\syncthing-sync-project`
-- `C:\\ud-mvp2`
-- `C:\\screen.vision`
-- `C:\\Life`
-- `C:\\informika`
-- `C:\\AIHUB-reps`
+## Конфигурация
 
-А также отдельная папка “диалогов Codex” (путь нужно уточнить и вписать).
+В репозитории хранится только “шаблон” и настройки:
+- `sync-folders.yaml` — список folder IDs + настройки (коммитится).
 
-## Что нужно уточнить (чтобы собрать рабочую схему)
+Локальные пути и device IDs — в отдельном файле, который **не коммитится**:
+- `sync-folders.local.yaml` — реальные пути папок для `wsl_a/wsl_b` + device IDs (игнорируется git).
+- Пример: `sync-folders.local.example.yaml`.
 
-1) “Папка диалогов Codex” — какой именно путь синхронизируем?
-   - Например: `/home/<user>/.codex/sessions` и/или `/home/<user>/.codex/archived_sessions`
-   - Важно: `auth.json` и токены синхронизировать не стоит.
+## Важные особенности
 
-2) Есть ли у обеих WSL машин доступ в интернет?
-   - Если да — можно полагаться на relay/global discovery.
-   - Если нет — Amvera им недоступна, нужен VPN/иной канал.
+- Syncthing не делает “тихий last-write-wins”: при параллельных изменениях одного файла на разных нодах возможны `sync-conflict` копии.
+- `.stignore` не синхронизируется между устройствами. Поэтому используется схема:
+  - локальный `.stignore` содержит `#include .stignore_sync`
+  - `.stignore_sync` — обычный файл и синхронизируется (общий список игноров). Профиль: `dev`.
 
-3) Amvera и TCP входящие порты:
-   - по докам Amvera внешний TCP доступ даётся через контроллеры и ограничен портами: `5432` (POSTGRES), `27017` (MONGO), `6379` (REDIS).
-   - для Syncthing можно использовать TCP контроллер `MONGO` (порт `27017`) и пробросить его на `containerPort: 22000` (см. `amvera.yaml`).
-   - даже без входящего TCP Syncthing сможет работать через relays (все ноды с интернетом).
+## Запуск на WSL нодах
 
-4) Нужно ли реально синхронизировать “тяжёлые” каталоги целиком?
-   - `node_modules`, `.next`, `dist`, `build`, `.venv`, `__pycache__` обычно лучше исключить через `.stignore`.
-   - Подтверди, что именно исключаем (или ничего не исключаем).
+### 1) Получить Device ID
 
-5) Политика конфликтов:
-   - ок ли `sync-conflict` файлы (и разруливать вручную),
-   - или нужен строго “одна нода главная” для части папок (Send Only / Receive Only)?
-
-## Рекомендуемые настройки (опционально, но сильно помогает)
-
-- На всех папках: `Ignore Permissions = on` (WSL ↔ Linux контейнер).
-- Versioning включить на Amvera (например “Staggered”), на WSL можно выключить.
-- Не синхронизировать конфиг Syncthing (`/data/syncthing` или `~/.local/state/syncthing`) между нодами, иначе можно получить одинаковые Device ID.
-
-## `.stignore` / общие игноры
-
-Syncthing **не синхронизирует** файл `.stignore` между устройствами. Поэтому используем схему:
-- в каждой папке создаём локальный `.stignore` с одной строкой `#include .stignore_sync`
-- файл `.stignore_sync` обычный (синхронизируется) и содержит общий список игноров
-
-Шаблоны лежат в `templates/stignore/`, а установка делается скриптом:
+Выбери режим на каждой WSL машине:
+- native: установлен `syncthing` в WSL
+- docker: используется образ `syncthing/syncthing:1`
 
 ```bash
-python3 scripts/install_stignore.py --node wsl_a --profile dev --create-missing-dirs
-python3 scripts/install_stignore.py --node wsl_b --profile dev --create-missing-dirs
+./scripts/wsl/get_device_id_native.sh
+# или
+./scripts/wsl/get_device_id_docker.sh
 ```
 
-Для Amvera (внутри контейнера) путь будет `/data/sync/...` — удобнее создавать эти файлы на WSL нодах:
-`.stignore_sync` синхронизируется и приедет на Amvera автоматически, а `.stignore` (локальный) контейнер создаст сам при старте.
+### 2) Создать локальный конфиг
+
+Скопируй пример и заполни под свои две машины:
+
+```bash
+cp sync-folders.local.example.yaml sync-folders.local.yaml
+```
+
+Заполни в `sync-folders.local.yaml`:
+- `nodes.wsl_a.device_id`, `nodes.wsl_b.device_id`
+- реальные пути папок (секция `folders:`)
+
+### 3) Применить настройки Syncthing + установить игноры
+
+Native-режим:
+
+```bash
+syncthing generate --home ~/.local/state/syncthing --no-default-folder
+python3 scripts/configure_syncthing.py --node wsl_a --home ~/.local/state/syncthing
+python3 scripts/install_stignore.py --node wsl_a --profile dev --create-missing-dirs
+```
+
+Docker-режим:
+
+```bash
+python3 scripts/configure_syncthing.py --node wsl_a --home ~/.local/state/syncthing-docker/config
+python3 scripts/install_stignore.py --node wsl_a --profile dev --create-missing-dirs
+```
+
+Повтори для `wsl_b` (замени `--node wsl_a` на `--node wsl_b`). После этого перезапусти Syncthing на каждой ноде.
+
+## Деплой на Amvera
+
+### 1) Persistent storage
+
+Нужен persistent storage минимум **10 GB** (можно увеличить позже). Всё состояние контейнера хранится в `/data`.
+
+### 2) Переменные окружения в Amvera
+
+Обязательные:
+- `WSL_A_DEVICE_ID`
+- `WSL_B_DEVICE_ID`
+
+Опциональные:
+- `FILE_BROWSER_ENABLED=0` — выключить публичный file browser
+- `FILE_BROWSER_PORT=...` — сменить порт (по умолчанию `80`)
+- `STIGNORE_PROFILE=dev`
+
+Versioning на Amvera (по умолчанию включён: 3 копии, хранение ~30 дней):
+- `ST_VERSIONING_TYPE=simple`
+- `ST_VERSIONING_KEEP=3`
+- `ST_VERSIONING_CLEANOUT_DAYS=30`
+
+### 3) Что будет доступно снаружи
+
+Публичный HTTP file browser (без аутентификации) для скачивания версий:
+- порт: `80`
+- корень: `/data/syncthing/versions`
+
+Syncthing Web UI остаётся только внутри контейнера (`127.0.0.1:8384`).
+
+### 4) Как получить Device ID Amvera
+
+При первом старте контейнер печатает `Device ID: ...` в лог (Run logs в Amvera UI).

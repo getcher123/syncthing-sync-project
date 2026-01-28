@@ -32,16 +32,22 @@ nodes:
 defaults:
   folder_type: sendreceive
   ignore_perms: true
+  stignore_profile: dev
+  amvera_versioning:
+    type: simple
+    keep: 3
+    cleanout_days: 30
 
 folders:
-  # Папка диалогов Codex/Sessions (уточнить точный путь и что именно включать).
+  # Папка диалогов Codex/Sessions.
   - id: codex-sessions
     label: Codex dialogs (sessions)
     type: sendreceive
     ignore_perms: true
     paths:
-      wsl_a: ~/.codex/sessions
-      wsl_b: ~/.codex/sessions
+      # Реальные пути для WSL задаются в `sync-folders.local.yaml` (не коммитится).
+      wsl_a: REQUIRED_LOCAL
+      wsl_b: REQUIRED_LOCAL
       amvera: /data/sync/wsl/codex/sessions
 
   - id: bi-core-xp
@@ -49,8 +55,8 @@ folders:
     type: sendreceive
     ignore_perms: true
     paths:
-      wsl_a: /mnt/c/BI core XP
-      wsl_b: /mnt/c/BI core XP
+      wsl_a: REQUIRED_LOCAL
+      wsl_b: REQUIRED_LOCAL
       amvera: /data/sync/C/BI core XP
 
   - id: syncthing-sync-project
@@ -58,8 +64,8 @@ folders:
     type: sendreceive
     ignore_perms: true
     paths:
-      wsl_a: /mnt/c/syncthing-sync-project
-      wsl_b: /mnt/c/syncthing-sync-project
+      wsl_a: REQUIRED_LOCAL
+      wsl_b: REQUIRED_LOCAL
       amvera: /data/sync/C/syncthing-sync-project
 
   - id: ud-mvp2
@@ -67,8 +73,8 @@ folders:
     type: sendreceive
     ignore_perms: true
     paths:
-      wsl_a: /mnt/c/ud-mvp2
-      wsl_b: /mnt/c/ud-mvp2
+      wsl_a: REQUIRED_LOCAL
+      wsl_b: REQUIRED_LOCAL
       amvera: /data/sync/C/ud-mvp2
 
   - id: screen-vision
@@ -76,8 +82,8 @@ folders:
     type: sendreceive
     ignore_perms: true
     paths:
-      wsl_a: /mnt/c/screen.vision
-      wsl_b: /mnt/c/screen.vision
+      wsl_a: REQUIRED_LOCAL
+      wsl_b: REQUIRED_LOCAL
       amvera: /data/sync/C/screen.vision
 
   - id: life
@@ -85,8 +91,8 @@ folders:
     type: sendreceive
     ignore_perms: true
     paths:
-      wsl_a: /mnt/c/Life
-      wsl_b: /mnt/c/Life
+      wsl_a: REQUIRED_LOCAL
+      wsl_b: REQUIRED_LOCAL
       amvera: /data/sync/C/Life
 
   - id: informika
@@ -94,8 +100,8 @@ folders:
     type: sendreceive
     ignore_perms: true
     paths:
-      wsl_a: /mnt/c/informika
-      wsl_b: /mnt/c/informika
+      wsl_a: REQUIRED_LOCAL
+      wsl_b: REQUIRED_LOCAL
       amvera: /data/sync/C/informika
 
   - id: aihub-reps
@@ -103,6 +109,6 @@ folders:
     type: sendreceive
     ignore_perms: true
     paths:
-      wsl_a: /mnt/c/AIHUB-reps
-      wsl_b: /mnt/c/AIHUB-reps
+      wsl_a: REQUIRED_LOCAL
+      wsl_b: REQUIRED_LOCAL
       amvera: /data/sync/C/AIHUB-reps

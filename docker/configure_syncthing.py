@@ -67,6 +67,7 @@ def find_or_add_folder(
     versioning_type: str,
     versioning_path: str,
     versioning_keep: int,
+    versioning_cleanout_days: int,
 ) -> None:
     existing = None
     for f in root.findall("folder"):
@@ -122,6 +123,9 @@ def find_or_add_folder(
     for p in list(ver.findall("param")):
         ver.remove(p)
     if versioning_type == "simple":
+        cleanout = ET.SubElement(ver, "param")
+        cleanout.set("key", "cleanoutDays")
+        cleanout.set("val", str(versioning_cleanout_days))
         keep = ET.SubElement(ver, "param")
         keep.set("key", "keep")
         keep.set("val", str(versioning_keep))
@@ -219,6 +223,7 @@ def main() -> int:
 
     versioning_type = os.environ.get("ST_VERSIONING_TYPE", "simple").strip()
     versioning_keep = int(os.environ.get("ST_VERSIONING_KEEP", "10").strip() or "10")
+    versioning_cleanout_days = int(os.environ.get("ST_VERSIONING_CLEANOUT_DAYS", "30").strip() or "30")
 
     for item in folders:
         if not isinstance(item, dict):
@@ -253,6 +258,7 @@ def main() -> int:
             versioning_type=versioning_type,
             versioning_path=str(versions_dir),
             versioning_keep=versioning_keep,
+            versioning_cleanout_days=versioning_cleanout_days,
         )
 
     ET.indent(tree, space="    ")
@@ -262,4 +268,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
