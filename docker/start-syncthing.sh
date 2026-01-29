@@ -22,7 +22,7 @@ if [ "${FILE_BROWSER_ENABLED:-0}" = "1" ]; then
   python3 -m http.server "$port" --directory "$root" &
 fi
 
-# Настройка папок/игноров/версий на основе sync-folders.yaml (и env с device ids).
+# Настройка папок/игноров/версий на основе sync-folders.yaml и AMVERA_ALLOWED_DEVICE_IDS.
 python3 /app/docker/configure_syncthing.py \
   --config "${SYNC_CONFIG:-/app/sync-folders.yaml}" \
   --home "$STHOMEDIR" \

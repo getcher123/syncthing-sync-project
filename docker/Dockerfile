@@ -15,6 +15,8 @@ ENV STNOUPGRADE=1 \
     ST_VERSIONING_TYPE=simple \
     ST_VERSIONING_KEEP=3 \
     ST_VERSIONING_CLEANOUT_DAYS=30 \
+    # Allowlist удалённых устройств (обязательно): "ID1,ID2"
+    AMVERA_ALLOWED_DEVICE_IDS= \
     # Простой HTTP file browser для скачивания бэкап-версий (включён по умолчанию)
     FILE_BROWSER_ENABLED=1 \
     FILE_BROWSER_PORT=80 \

@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import copy
 import os
+import re
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -32,6 +33,40 @@ def write_text_if_missing(path: Path, content: str, *, force: bool) -> bool:
         return False
     path.write_text(content, encoding="utf-8")
     return True
+
+
+def parse_device_id_list(value: str) -> list[str]:
+    raw = (value or "").strip()
+    if not raw:
+        return []
+    parts = re.split(r"[,\s]+", raw)
+    result: list[str] = []
+    seen: set[str] = set()
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+        normalized = part.upper()
+        if not re.fullmatch(r"[A-Z2-7-]{10,}", normalized):
+            raise ValueError(f"Некорректный Device ID в AMVERA_ALLOWED_DEVICE_IDS: {part!r}")
+        if normalized not in seen:
+            seen.add(normalized)
+            result.append(normalized)
+    return result
+
+
+def enforce_allowed_devices(root: ET.Element, *, local_id: str, allowed_remote_ids: set[str]) -> int:
+    removed = 0
+    for dev in list(root.findall("device")):
+        did = (dev.get("id") or "").strip()
+        if not did:
+            continue
+        if did == local_id:
+            continue
+        if did not in allowed_remote_ids:
+            root.remove(dev)
+            removed += 1
+    return removed
 
 
 def find_or_add_device(root: ET.Element, template: ET.Element, *, device_id: str, name: str, addresses: list[str]) -> None:
@@ -194,16 +229,23 @@ def main() -> int:
         if start_browser is not None:
             start_browser.text = "false"
 
-    # Device IDs from env
-    wsl_a_id = os.environ.get("WSL_A_DEVICE_ID", "").strip()
-    wsl_b_id = os.environ.get("WSL_B_DEVICE_ID", "").strip()
-    if not wsl_a_id or not wsl_b_id:
+    # Allowed remote device IDs (single source of truth)
+    allowed_env = os.environ.get("AMVERA_ALLOWED_DEVICE_IDS", "").strip()
+    try:
+        allowed_ids = parse_device_id_list(allowed_env)
+    except ValueError as e:
+        print(f"[configure] {e}", file=sys.stderr)
+        return 1
+
+    if not allowed_ids:
         print(
-            "[configure] WSL_A_DEVICE_ID / WSL_B_DEVICE_ID не заданы — папки/шары в конфиг не добавляю (только .stignore).",
+            "[configure] AMVERA_ALLOWED_DEVICE_IDS не задан — папки/шары в конфиг не добавляю (только .stignore).",
             file=sys.stderr,
         )
         tree.write(config_xml, encoding="utf-8")
         return 0
+
+    remote_ids = allowed_ids
 
     # Local device id (from generated config.xml)
     local_device = root.find("device")
@@ -218,8 +260,13 @@ def main() -> int:
         print("[configure] defaults templates not found in config.xml", file=sys.stderr)
         return 1
 
-    find_or_add_device(root, defaults_device, device_id=wsl_a_id, name="wsl_a", addresses=["dynamic"])
-    find_or_add_device(root, defaults_device, device_id=wsl_b_id, name="wsl_b", addresses=["dynamic"])
+    removed = enforce_allowed_devices(root, local_id=local_id, allowed_remote_ids=set(remote_ids))
+    if removed:
+        print(f"[configure] AMVERA_ALLOWED_DEVICE_IDS: removed {removed} device(s) from config.xml", file=sys.stderr)
+
+    for idx, did in enumerate(remote_ids, start=1):
+        name = f"peer_{idx}"
+        find_or_add_device(root, defaults_device, device_id=did, name=name, addresses=["dynamic"])
 
     versioning_type = os.environ.get("ST_VERSIONING_TYPE", "simple").strip()
     versioning_keep = int(os.environ.get("ST_VERSIONING_KEEP", "10").strip() or "10")
@@ -254,7 +301,7 @@ def main() -> int:
             path=folder_path,
             folder_type=folder_type,
             ignore_perms=ignore_perms,
-            device_ids=[local_id, wsl_a_id, wsl_b_id],
+            device_ids=[local_id, *remote_ids],
             versioning_type=versioning_type,
             versioning_path=str(versions_dir),
             versioning_keep=versioning_keep,

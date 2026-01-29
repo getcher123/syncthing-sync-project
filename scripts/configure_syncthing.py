@@ -160,17 +160,17 @@ def main() -> int:
     amvera_id = str((nodes.get("amvera") or {}).get("device_id") or "").strip()
     amvera_domain = str((nodes.get("amvera") or {}).get("domain") or "").strip()
 
-    required = [("wsl_a.device_id", wsl_a_id), ("wsl_b.device_id", wsl_b_id), ("amvera.device_id", amvera_id)]
-    missing = [name for name, value in required if not value or value == "REQUIRED"]
-    if missing:
-        print(f"ERROR: заполни в sync-folders.yaml: {', '.join(missing)}", file=sys.stderr)
-        return 2
+    def is_missing(value: str) -> bool:
+        return not value or value.strip().upper() == "REQUIRED"
 
     home_dir = Path(args.home).expanduser().resolve()
     config_xml = home_dir / "config.xml"
     if not config_xml.exists():
         print(
-            f"ERROR: нет {config_xml}. Сначала создай его командой: syncthing generate --home '{home_dir}' --no-default-folder",
+            f"ERROR: нет {config_xml}.\n"
+            "Сначала создай его командой:\n"
+            f"- native: ./scripts/wsl/get_device_id_native.sh '{home_dir}'\n"
+            "- docker: ./scripts/wsl/get_device_id_docker.sh '~/.local/state/syncthing-docker'\n",
             file=sys.stderr,
         )
         return 2
@@ -194,12 +194,23 @@ def main() -> int:
     other_wsl_name = "wsl_b" if args.node == "wsl_a" else "wsl_a"
 
     # Remote device entries
-    find_or_add_device(root, defaults_device, device_id=other_wsl_id, name=other_wsl_name, addresses=["dynamic"])
-    amvera_addresses = ["dynamic"]
-    if amvera_domain and amvera_domain != "REQUIRED":
-        # Если настроен TCP доступ в Amvera через порт 27017 (контроллер MONGO), можно указать явный адрес.
-        amvera_addresses = [f"tcp://{amvera_domain}:27017", "dynamic"]
-    find_or_add_device(root, defaults_device, device_id=amvera_id, name="amvera", addresses=amvera_addresses)
+    remote_device_ids: list[str] = []
+
+    if not is_missing(other_wsl_id):
+        remote_device_ids.append(other_wsl_id)
+        find_or_add_device(root, defaults_device, device_id=other_wsl_id, name=other_wsl_name, addresses=["dynamic"])
+    else:
+        print(f"WARN: {other_wsl_name}.device_id не задан — нода будет работать без второй WSL ноды.", file=sys.stderr)
+
+    if not is_missing(amvera_id):
+        remote_device_ids.append(amvera_id)
+        amvera_addresses = ["dynamic"]
+        if amvera_domain and amvera_domain.upper() != "REQUIRED":
+            # Опционально: если Amvera доступна по прямому TCP (порт Syncthing 22000).
+            amvera_addresses = [f"tcp://{amvera_domain}:22000", "dynamic"]
+        find_or_add_device(root, defaults_device, device_id=amvera_id, name="amvera", addresses=amvera_addresses)
+    else:
+        print("WARN: amvera.device_id не задан — нода будет работать без Amvera.", file=sys.stderr)
 
     # GUI локально
     gui = root.find("gui")
@@ -243,7 +254,7 @@ def main() -> int:
             path=folder_path,
             folder_type=folder_type,
             ignore_perms=ignore_perms,
-            device_ids=[local_id, other_wsl_id, amvera_id],
+            device_ids=[local_id, *remote_device_ids],
         )
 
     ET.indent(tree, space="    ")

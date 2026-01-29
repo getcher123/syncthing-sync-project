@@ -10,6 +10,11 @@ nodes:
     distro: Ubuntu-22.04
     mode: native
     device_id: REPLACE_WITH_WSL_B_DEVICE_ID
+  amvera:
+    mode: docker
+    device_id: REPLACE_WITH_AMVERA_DEVICE_ID
+    # Опционально: домен/адрес Amvera (нужен только если используешь direct tcp).
+    domain: ""
 
 folders:
   codex-sessions:

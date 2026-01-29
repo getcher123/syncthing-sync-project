@@ -1,1 +1,4 @@
 sync-folders.local.yaml
+__pycache__/
+*.py[cod]
+*.pyo

@@ -27,12 +27,13 @@
 - `sync-folders.yaml` — список folder IDs + настройки (коммитится).
 
 Локальные пути и device IDs — в отдельном файле, который **не коммитится**:
-- `sync-folders.local.yaml` — реальные пути папок для `wsl_a/wsl_b` + device IDs (игнорируется git).
+- `sync-folders.local.yaml` — реальные пути папок + device IDs (`wsl_a/wsl_b/amvera`) (игнорируется git).
 - Пример: `sync-folders.local.example.yaml`.
 
 ## Важные особенности
 
 - Syncthing не делает “тихий last-write-wins”: при параллельных изменениях одного файла на разных нодах возможны `sync-conflict` копии.
+- По умолчанию Syncthing пытается direct-соединение и использует relays только если direct недоступен. “Relay-only” режим отдельно настраивается.
 - `.stignore` не синхронизируется между устройствами. Поэтому используется схема:
   - локальный `.stignore` содержит `#include .stignore_sync`
   - `.stignore_sync` — обычный файл и синхронизируется (общий список игноров). Профиль: `dev`.
@@ -61,6 +62,7 @@ cp sync-folders.local.example.yaml sync-folders.local.yaml
 
 Заполни в `sync-folders.local.yaml`:
 - `nodes.wsl_a.device_id`, `nodes.wsl_b.device_id`
+- `nodes.amvera.device_id` (после первого деплоя Amvera можно взять Device ID из логов)
 - реальные пути папок (секция `folders:`)
 
 ### 3) Применить настройки Syncthing + установить игноры
@@ -68,7 +70,8 @@ cp sync-folders.local.example.yaml sync-folders.local.yaml
 Native-режим:
 
 ```bash
-syncthing generate --home ~/.local/state/syncthing --no-default-folder
+# Создаст config.xml, если его ещё нет (и заодно покажет Device ID)
+./scripts/wsl/get_device_id_native.sh ~/.local/state/syncthing >/dev/null
 python3 scripts/configure_syncthing.py --node wsl_a --home ~/.local/state/syncthing
 python3 scripts/install_stignore.py --node wsl_a --profile dev --create-missing-dirs
 ```
@@ -76,6 +79,7 @@ python3 scripts/install_stignore.py --node wsl_a --profile dev --create-missing-
 Docker-режим:
 
 ```bash
+./scripts/wsl/get_device_id_docker.sh ~/.local/state/syncthing-docker >/dev/null
 python3 scripts/configure_syncthing.py --node wsl_a --home ~/.local/state/syncthing-docker/config
 python3 scripts/install_stignore.py --node wsl_a --profile dev --create-missing-dirs
 ```
@@ -91,8 +95,11 @@ python3 scripts/install_stignore.py --node wsl_a --profile dev --create-missing-
 ### 2) Переменные окружения в Amvera
 
 Обязательные:
-- `WSL_A_DEVICE_ID`
-- `WSL_B_DEVICE_ID`
+- `AMVERA_ALLOWED_DEVICE_IDS` — единственный источник правды: список Device ID всех нод, которым разрешено подключаться к Amvera (через запятую/пробел).
+
+Поведение allowlist:
+- Amvera удаляет из `config.xml` все устройства, которых нет в списке.
+- Amvera шарит папки только с устройствами из списка.
 
 Опциональные:
 - `FILE_BROWSER_ENABLED=0` — выключить публичный file browser
@@ -115,3 +122,21 @@ Syncthing Web UI остаётся только внутри контейнера
 ### 4) Как получить Device ID Amvera
 
 При первом старте контейнер печатает `Device ID: ...` в лог (Run logs в Amvera UI).
+
+## Локальный тест (3 ноды + сервер)
+
+Для быстрой проверки синхронизации без контейнеров на нодах:
+
+```bash
+./scripts/local_test_up.sh
+```
+
+Скрипт поднимает 3 локальные ноды (`n1/n2/n3`) и одну серверную (docker) с `AMVERA_ALLOWED_DEVICE_IDS`,
+создаёт по одному файлу на каждой ноде и проверяет, что они синхронизировались на всех участниках.
+В конце выводит Device IDs, порты, список файлов и проверки по checksum.
+
+Остановить и удалить всё:
+
+```bash
+./scripts/local_test_down.sh
+```
